@@ -16,6 +16,8 @@ data/
 logs/
 reports/
 config.local.json
+private/
+admin_password.hash
 config.*.json
 !config.example.json
 watchlist.json

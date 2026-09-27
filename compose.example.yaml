@@ -1,0 +1,17 @@
+services:
+  goofish-monitor-lite:
+    build: .
+    container_name: goofish-monitor-lite
+    restart: unless-stopped
+    init: true
+    shm_size: 256m
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: Asia/Shanghai
+      GOOFISH_CONFIG: /app/private/config.local.json
+      GOOFISH_ADMIN_PASSWORD_FILE: /app/private/admin_password.hash
+    ports:
+      - "127.0.0.1:9087:9087"
+    volumes:
+      - ./private:/app/private

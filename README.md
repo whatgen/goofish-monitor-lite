@@ -1,5 +1,31 @@
 # Goofish Monitor Lite
 
+> `whatgen` fork: adds a password-protected Web page for search conditions and
+> per-item Bark notifications with both Xianyu App and web links. The upstream
+> project remains at `DouglaxYuan/goofish-monitor-lite`.
+
+## Web settings in this fork
+
+The page lets you add, edit, and delete searches, including keyword, price
+range, required terms, excluded terms, and result limit. Changes are written
+atomically to `private/config.local.json`; the monitor reloads them before its
+next search round. Other configuration and login state stay in the private
+directory and are not shown by the page.
+
+Build with the included `Dockerfile`. See `compose.example.yaml` for a
+single-container example. Mount the whole `private` directory read/write. Put
+`config.local.json`, `state/`, `data/`, and `admin_password.hash` inside it.
+Generate a password hash with Python before starting the container:
+
+```bash
+python3 -c 'import getpass,pathlib,admin_ui; p=pathlib.Path("private/admin_password.hash"); p.parent.mkdir(exist_ok=True); p.write_text(admin_ui.password_hash(getpass.getpass("Admin password: "))+"\n"); p.chmod(0o600)'
+```
+
+The example binds the page to localhost on port 9087. On a NAS, bind its LAN
+address instead, for example `10.1.1.3:9087:9087`. When publishing through a
+reverse proxy, configure HTTPS and keep the direct port private. The Web
+password protects search settings; it is separate from the Xianyu login.
+
 [English](#english)
 
 - **项目状态**：可用，维护中
@@ -48,7 +74,7 @@ Goofish Monitor Lite 是一个轻量级闲鱼 / Goofish 二手价格监控工具
 - **requests**：发送 webhook、Bark、Server 酱等 HTTP 通知。
 - **本地 JSON 文件**：保存配置、登录态、去重状态和监控结果。
 
-项目没有数据库和后端服务，适合放在 Mac、Linux 小主机、OpenClaw、NAS 容器或其他 agent 工作区里运行。
+本 fork 没有数据库；网页设置服务与监控程序运行在同一个容器里，适合放在 Mac、Linux 小主机或 NAS 上。
 
 ## 目录和关键文件
 
@@ -272,7 +298,7 @@ This repository contains only generic source code and example configuration. Loc
 - **requests** for webhook, Bark, and ServerChan notifications.
 - **Local JSON files** for config, browser state, deduplication state, and runtime output.
 
-There is no database and no backend service. The project is easy to run on macOS, Linux, OpenClaw, a NAS container, or an agent workspace.
+This fork has no database. Its Web settings server and monitor run in one container.
 
 ## Key Files
 

@@ -463,6 +463,15 @@ class GoofishMonitor:
                 await context.close()
 
     async def run_round(self, page: Page) -> list[Candidate]:
+        try:
+            updated = read_json(self.config_path, {})
+            if isinstance(updated, dict) and updated.get("products"):
+                if updated != self.config:
+                    log("Search settings reloaded from disk.")
+                self.config = updated
+                self.products = updated["products"]
+        except (OSError, SystemExit) as exc:
+            log(f"Keeping previous search settings: {exc}")
         log("Starting monitor round.")
         deals: list[Candidate] = []
         for product in self.products:
@@ -839,7 +848,8 @@ class GoofishMonitor:
         if notifications.get("webhook_url"):
             await asyncio.to_thread(self.post_webhook_many, notifications["webhook_url"], candidates)
         if notifications.get("bark_url"):
-            await asyncio.to_thread(self.post_bark, notifications["bark_url"], title, body, candidates[0].href)
+            for candidate in candidates:
+                await asyncio.to_thread(self.post_bark, notifications["bark_url"], candidate)
         cc_connect = notifications.get("cc_connect") or {}
         if cc_connect.get("enabled"):
             await asyncio.to_thread(self.post_cc_connect, cc_connect, title, body)
@@ -940,13 +950,26 @@ class GoofishMonitor:
         response = requests.post(webhook_url, json=payload, timeout=12)
         response.raise_for_status()
 
-    def post_bark(self, bark_url: str, title: str, body: str, href: str) -> None:
+    def post_bark(self, bark_url: str, candidate: Candidate) -> None:
+        item_id = str(candidate.item_id or "").strip()
+        web_url = f"https://www.goofish.com/item?id={item_id}" if item_id.isdigit() else candidate.href
+        app_url = f"fleamarket://item?id={item_id}&fmdirect=true" if item_id.isdigit() else ""
+        title = f"¥{candidate.price:g} {candidate.title[:55]}"
+        details = f"匹配：{candidate.product_name}\n价格：¥{candidate.price:g}"
+        body = f"{details}\n网页：{web_url}"
+        markdown = f"{details}\n\n[网页打开]({web_url})"
+        if app_url:
+            body += f"\n闲鱼 App：{app_url}"
+            markdown += f" · [闲鱼 App 打开]({app_url})"
         response = requests.post(
             bark_url,
-            json={"title": title, "body": body, "url": href, "level": "timeSensitive", "group": "闲鱼监控"},
+            json={"title": title, "body": body, "markdown": markdown, "url": app_url or web_url,
+                  "level": "timeSensitive", "group": "闲鱼监控"},
             timeout=12,
         )
         response.raise_for_status()
+        if response.json().get("code") != 200:
+            raise RuntimeError("Bark did not accept the notification")
 
     def post_cc_connect(self, config: dict[str, Any], title: str, body: str) -> None:
         command = str(config.get("command") or "cc-connect")
