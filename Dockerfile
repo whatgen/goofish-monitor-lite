@@ -8,6 +8,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN python -m pip install --no-cache-dir -r requirements.txt \
     && python -m playwright install --with-deps chromium
-COPY goofish_monitor.py admin_ui.py admin.html run_with_admin.py ./
+COPY goofish_monitor.py admin_ui.py admin.html admin.js run_with_admin.py ./
 EXPOSE 9087
 CMD ["python", "run_with_admin.py"]

@@ -17,6 +17,7 @@ from pathlib import Path
 CONFIG = Path(os.environ.get("GOOFISH_CONFIG", "/app/private/config.local.json"))
 PASSWORD_FILE = Path(os.environ.get("GOOFISH_ADMIN_PASSWORD_FILE", "/app/private/admin_password.hash"))
 PAGE = Path(__file__).with_name("admin.html")
+SCRIPT = Path(__file__).with_name("admin.js")
 LOCK = threading.Lock()
 SESSIONS: dict[str, tuple[float, str]] = {}
 ATTEMPTS: dict[str, list[float]] = {}
@@ -142,15 +143,16 @@ class Handler(BaseHTTPRequestHandler):
         return session
 
     def do_GET(self):
-        if self.path == "/":
-            body = PAGE.read_bytes()
+        if self.path in ("/", "/admin.js"):
+            is_script = self.path == "/admin.js"
+            body = (SCRIPT if is_script else PAGE).read_bytes()
             self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Type", "application/javascript; charset=utf-8" if is_script else "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'")
+            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'")
             self.end_headers()
             self.wfile.write(body)
         elif self.path == "/api/products":
