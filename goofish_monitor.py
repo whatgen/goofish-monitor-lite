@@ -492,6 +492,8 @@ class GoofishMonitor:
         params = {"q": keyword}
         url = f"https://www.goofish.com/search?{urlencode(params)}"
         log(f"Searching: {keyword}")
+        if getattr(self, "service", None):
+            self.service.update(keyword=keyword)
 
         items: list[dict[str, Any]] = []
         try:
@@ -513,7 +515,7 @@ class GoofishMonitor:
             log(f"Timeout while searching {keyword}: {exc}")
         except RuntimeError as exc:
             log(str(exc))
-            if self.config.get("runtime", {}).get("stop_on_risk_control", True):
+            if getattr(self, "service", None) or self.config.get("runtime", {}).get("stop_on_risk_control", True):
                 raise
         except Exception as exc:
             log(f"Search failed for {keyword}: {exc}")
@@ -584,6 +586,8 @@ class GoofishMonitor:
         for selector in LOGIN_SELECTORS:
             try:
                 if await page.locator(selector).first.is_visible(timeout=800):
+                    if getattr(self, "service", None):
+                        raise RuntimeError("Login required or state expired")
                     screenshot = self.data_dir / f"login_required_{int(time.time())}.png"
                     await page.screenshot(path=str(screenshot), full_page=True)
                     raise RuntimeError(f"Login required or state expired. Screenshot: {screenshot}")
@@ -592,6 +596,8 @@ class GoofishMonitor:
         for selector in RISK_SELECTORS:
             try:
                 if await page.locator(selector).first.is_visible(timeout=1200):
+                    if getattr(self, "service", None):
+                        raise RuntimeError("Risk control detected")
                     screenshot = self.data_dir / f"risk_control_{int(time.time())}.png"
                     await page.screenshot(path=str(screenshot), full_page=True)
                     raise RuntimeError(f"Risk control detected ({selector}). Screenshot: {screenshot}")
@@ -603,6 +609,12 @@ class GoofishMonitor:
             payload = await response.json()
         except Exception:
             return []
+        if getattr(self, "service", None):
+            codes = " ".join(str(value) for value in payload.get("ret", []))
+            if any(word in codes.upper() for word in ("LOGIN", "SESSION_EXPIRED", "TOKEN_EXPIRED", "TOKEN_EMPTY")):
+                raise RuntimeError("Login required or state expired")
+            if "SUCCESS" not in codes or not isinstance(payload.get("data", {}).get("resultList"), list):
+                raise RuntimeError("Risk control detected: search response not usable")
         result_list = safe_get(payload, "data", "resultList", default=[]) or []
         parsed: list[dict[str, Any]] = []
         for item in result_list:

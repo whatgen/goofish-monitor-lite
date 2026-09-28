@@ -1,40 +1,17 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>闲鱼监控设置</title>
-  <style>
-    :root {font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#183047;background:#f4f7f9}
-    * {box-sizing:border-box} body {margin:0} main {max-width:960px;margin:32px auto;padding:0 16px}
-    h1 {font-size:25px;margin:0 0 8px} .hint {color:#526579;line-height:1.6}
-    section {background:white;border:1px solid #dce5ec;border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 2px 8px #1830470a}
-    label {display:block;font-size:14px;font-weight:600;margin:12px 0 5px}
-    input,textarea {font:inherit;width:100%;padding:10px 12px;border:1px solid #bccbd5;border-radius:8px;background:white}
-    textarea {min-height:62px;resize:vertical} button {font:inherit;border:0;border-radius:8px;padding:10px 15px;background:#086cb4;color:white;cursor:pointer}
-    button.secondary {background:#e6eff5;color:#17354e} button.danger {background:#fff0ed;color:#a7301e}
-    .row {display:flex;gap:12px;flex-wrap:wrap} .row>div {flex:1;min-width:180px}
-    .toolbar {display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
-    .actions {display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
-    .error {color:#ac2718}.success {color:#15734b}.hidden {display:none} #status {min-height:22px}
-  </style>
-</head>
-<body>
-<main>
-  <h1>闲鱼监控设置</h1>
-  <p class="hint">在网页里添加、修改搜索条件。保存后，下一轮监控自动使用新设置。</p>
-  <section id="login">
-    <h2>登录</h2>
-    <label for="password">管理密码</label><input id="password" type="password" autocomplete="current-password">
-    <div class="actions"><button id="loginButton">进入设置</button></div>
-  </section>
-  <div id="app" class="hidden">
-    <div class="toolbar"><p class="hint">每条搜索独立设置价格、关键词与排除词。</p><button id="logout" class="secondary">退出</button></div>
-    <div id="cards"></div>
-    <div class="toolbar"><button id="add" class="secondary">＋ 添加搜索</button><button id="save">保存全部设置</button></div>
-  </div>
-  <p id="status" role="status"></p>
-</main>
-<script src="/admin.js" defer></script>
-</body>
-</html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>闲鱼监控</title>
+<style>
+:root{font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:#243442;background:#f3f6f8;font-size:15px;line-height:1.6;--blue:#17628b;--line:#d6e0e6;--muted:#526575}*{box-sizing:border-box}body{margin:0}main{max-width:1080px;margin:0 auto;padding:28px 24px 80px}header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #243442;padding-bottom:18px;margin-bottom:28px}h1{font-size:26px;margin:0}h2{font-size:19px;margin:0 0 12px}h3{font-size:16px;margin:0}p{margin:8px 0 16px}.hint{color:var(--muted)}section,.panel{background:#fff;border:1px solid var(--line);padding:24px;border-radius:10px;margin:18px 0}.hidden{display:none!important}.row{display:flex;gap:16px;flex-wrap:wrap}.row>div{flex:1;min-width:180px}label{display:block;margin:12px 0 5px;font-weight:600;font-size:14px}input,textarea{font:inherit;width:100%;padding:10px 12px;border:1px solid #aebec8;border-radius:5px;background:#fff;color:inherit}textarea{min-height:68px;resize:vertical}button{font:inherit;border:1px solid transparent;border-radius:6px;padding:9px 16px;background:var(--blue);color:white;cursor:pointer}button:disabled{cursor:wait;opacity:.55}button.secondary{background:#fff;border-color:#aebec8;color:#243442}button.danger{color:#a22e22;background:#fff;border-color:#e3b9b3}:focus-visible{outline:3px solid #ffcc45;outline-offset:3px}.toolbar,.actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.actions{justify-content:flex-end;margin-top:16px}nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}nav button{background:transparent;color:#526575;border-radius:4px}nav button[aria-selected=true]{background:#243442;color:#fff}.health{border-left:5px solid #25764e}.health.attention{border-left-color:#bd660b}.health.error{border-left-color:#ad3325}.health h2{font-size:22px}.facts{display:flex;gap:30px;flex-wrap:wrap;margin-top:20px}.facts span{display:block;color:#526575;font-size:13px}.facts strong{font-size:15px;font-weight:500}.notice{border-left:3px solid #d2931e;padding:10px 16px;background:#fff8e7;color:#654512}.login-layout{display:grid;grid-template-columns:minmax(280px,1fr) 1fr;gap:24px}.image-box{min-height:270px;display:flex;align-items:center;justify-content:center;background:#f6f8fa;border:1px dashed #b8c7cf;overflow:hidden}.image-box img{width:100%;height:auto;max-height:540px;object-fit:contain}.step{padding:12px 0;border-bottom:1px solid var(--line)}.step strong{display:block}.card{padding:20px}.card h2{font-size:17px}details{margin:16px 0}summary{cursor:pointer;font-weight:600}.sticky-save{position:sticky;bottom:0;background:#fff;border:1px solid var(--line);padding:14px 20px;box-shadow:0 -3px 12px #2434420a}.error-text{color:#ad3325}.success{color:#216943}#status{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 22px;max-width:90vw;border:1px solid var(--line);background:white;border-radius:8px;box-shadow:0 3px 15px #24344222;z-index:10}#status:empty{display:none}#login{max-width:440px;margin:70px auto}#login h2{font-size:22px}#passwordForm{max-width:540px}small{color:var(--muted)}@media(max-width:650px){main{padding:18px 14px 90px}section,.panel{padding:18px}.login-layout{grid-template-columns:1fr}h1{font-size:22px}.facts{gap:14px}nav{gap:3px}nav button{padding:8px 12px}.row>div{min-width:130px}}
+</style></head><body><main>
+<header><div><h1>闲鱼监控</h1><small>发现合适的商品，及时通知你。</small></div><button id="logout" class="secondary hidden">退出管理</button></header>
+<section id="login"><h2>进入管理页</h2><p class="hint">管理密码用于保护搜索条件和闲鱼登录状态。</p><label for="password">管理密码</label><input id="password" type="password" autocomplete="current-password"><div class="actions"><button id="loginButton">登录管理页</button></div></section>
+<div id="app" class="hidden">
+<div id="health" class="panel health attention" role="status"><h2 id="phaseTitle">正在读取状态…</h2><p id="phaseMessage"></p><div class="facts"><div><span>最近完成搜索</span><strong id="lastSuccess">—</strong></div><div><span>当前搜索</span><strong id="currentKeyword">—</strong></div><div><span>下次搜索</span><strong id="nextRun">—</strong></div></div></div>
+<nav aria-label="管理栏目"><button data-tab="overview" aria-selected="true">运行与登录</button><button data-tab="searches" aria-selected="false">搜索条件</button><button data-tab="account" aria-selected="false">管理密码</button></nav>
+<div id="overview" class="tab">
+<section><div class="toolbar"><h2>闲鱼账户</h2><button id="startLogin">扫码登录 / 重新登录</button></div><p class="hint">失效时自动暂停搜索并通过 Bark 提醒。扫码成功后验证搜索权限，再自动恢复监控。</p><p id="notification" class="notice"></p>
+<div id="qrArea" class="hidden login-layout"><div class="image-box"><img id="qrImage" alt="闲鱼官方扫码登录页面" class="hidden"><p id="qrPlaceholder" class="hint">正在生成二维码，请稍候…</p></div><div><h3>在这里完成登录</h3><div class="step"><strong>1. 打开手机闲鱼 App</strong>使用扫一扫，扫描左侧二维码。</div><div class="step"><strong>2. 在手机上确认登录</strong>如需安全验证，请按闲鱼官方提示操作。</div><div class="step"><strong>3. 等待搜索验证完成</strong>看到“监控正常”后即可关闭此页面。</div><p id="loginCountdown" class="hint"></p><button id="cancelLogin" class="secondary">取消本次扫码</button></div></div></section>
+<section><h2>提醒与筛选</h2><p>商品提醒保留“闲鱼 App”和“网页”两种打开方式。同一次登录失效只提醒一次，发送失败会重试。</p><p class="hint">没有收到商品时，先看上方运行状态，再检查价格和排除词。排除词会匹配商品整段描述，例如“包装盒”也会排除“包装盒都在”。</p></section></div>
+<div id="searches" class="tab hidden"><p class="hint">价格包含上下限。保存后下一轮生效；闲鱼搜索排序和返回数量会影响覆盖范围。</p><div id="cards"></div><section><h2>所有搜索共用的过滤条件</h2><p class="hint">尽量使用“仅售包装盒”这类明确短语，避免“盒子”“换”这样的宽泛词。</p><label for="globalExcludes">直接排除（逗号分隔）</label><textarea id="globalExcludes"></textarea><label for="suspiciousTerms">可疑描述：降低优先级，可能不推送（逗号分隔）</label><textarea id="suspiciousTerms"></textarea></section><div class="toolbar sticky-save"><button id="add" class="secondary">添加搜索</button><button id="save">保存搜索条件</button></div></div>
+<div id="account" class="tab hidden"><section><h2>修改管理密码</h2><p class="hint">这是管理页密码，与闲鱼账号密码无关。修改后所有管理会话退出，需要用新密码登录。</p><div id="passwordForm"><label for="oldPassword">当前管理密码</label><input id="oldPassword" type="password" autocomplete="current-password"><label for="newPassword">新密码（10～128 个字符）</label><input id="newPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128"><label for="confirmPassword">再次输入新密码</label><input id="confirmPassword" type="password" autocomplete="new-password"><div class="actions"><button id="changePassword">修改密码</button></div></div></section></div>
+</div><p id="status" role="status" aria-live="polite"></p></main><script src="/admin.js" defer></script></body></html>

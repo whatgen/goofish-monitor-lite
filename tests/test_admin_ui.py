@@ -60,6 +60,36 @@ class AdminUITest(unittest.TestCase):
         self.assertEqual(json.loads(admin_ui.CONFIG.read_text())["notifications"]["bark_url"], "secret-not-for-browser")
         self.assertEqual(self.call("/api/products", "PUT", {"products": items, "revision": current["revision"]}, login["csrf"])[0], 409)
 
+    def test_password_change_requires_current_password_and_revokes_sessions(self):
+        _, login = self.call("/api/login", "POST", {"password": "test-password"})
+        body = {"current_password": "test-password", "new_password": "new-password-long"}
+        self.assertEqual(self.call("/api/password", "POST", body)[0], 403)
+        bad = {**body, "current_password": "incorrect"}
+        self.assertEqual(self.call("/api/password", "POST", bad, login["csrf"])[0], 400)
+        self.assertEqual(self.call("/api/password", "POST", body, login["csrf"])[0], 200)
+        self.assertEqual(self.call("/api/products")[0], 401)
+        self.assertEqual(self.call("/api/login", "POST", {"password": "test-password"})[0], 401)
+        self.assertEqual(self.call("/api/login", "POST", {"password": "new-password-long"})[0], 200)
+        self.assertEqual(admin_ui.PASSWORD_FILE.stat().st_mode & 0o777, 0o600)
+
+    def test_status_image_and_login_actions_require_authentication(self):
+        for path in ("/api/status", "/api/login-image"):
+            self.assertEqual(self.call(path)[0], 401)
+        self.assertEqual(self.call("/api/xianyu/login", "POST", {})[0], 403)
+        _, login = self.call("/api/login", "POST", {"password": "test-password"})
+        self.assertEqual(self.call("/api/xianyu/login", "POST", {})[0], 403)
+
+    def test_filter_edit_preserves_bark_and_rejects_stale_write(self):
+        _, login = self.call("/api/login", "POST", {"password": "test-password"})
+        _, current = self.call("/api/products")
+        body = {"products": current["products"], "revision": current["revision"],
+                "filters": {"global_exclude_terms": ["仅售包装盒"], "suspicious_terms": ["置换"]}}
+        self.assertEqual(self.call("/api/products", "PUT", body, login["csrf"])[0], 200)
+        config = json.loads(admin_ui.CONFIG.read_text())
+        self.assertEqual(config["filters"]["global_exclude_terms"], ["仅售包装盒"])
+        self.assertEqual(config["notifications"]["bark_url"], "secret-not-for-browser")
+        self.assertEqual(self.call("/api/products", "PUT", body, login["csrf"])[0], 409)
+
     def test_invalid_price_is_rejected(self):
         code, login = self.call("/api/login", "POST", {"password": "test-password"})
         self.assertEqual(code, 200)

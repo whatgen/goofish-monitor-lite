@@ -23,6 +23,16 @@ SESSIONS: dict[str, tuple[float, str]] = {}
 ATTEMPTS: dict[str, list[float]] = {}
 
 
+def service():
+    from monitor_service import SERVICE
+    return SERVICE
+
+
+def public_filters(config):
+    filters = config.get("filters", {})
+    return {key: filters.get(key, []) for key in ("global_exclude_terms", "suspicious_terms")}
+
+
 def password_hash(password: str, salt: bytes | None = None) -> str:
     salt = salt or secrets.token_bytes(16)
     digest = hashlib.scrypt(password.encode(), salt=salt, n=16384, r=8, p=1)
@@ -152,7 +162,25 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'")
+            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/api/status":
+            if not self.session():
+                return self.send_json(401, {"error": "请先登录"})
+            self.send_json(200, service().snapshot())
+        elif self.path == "/api/login-image":
+            if not self.session():
+                return self.send_json(401, {"error": "请先登录"})
+            with service().lock:
+                body = service().image
+            if not body:
+                return self.send_json(404, {"error": "二维码尚未就绪"})
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
             self.end_headers()
             self.wfile.write(body)
         elif self.path == "/api/products":
@@ -161,7 +189,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(401, {"error": "请先登录"})
             try:
                 raw = CONFIG.read_bytes()
-                self.send_json(200, {"products": json.loads(raw)["products"], "revision": revision(raw), "csrf": session[1]})
+                config = json.loads(raw)
+                self.send_json(200, {"products": config["products"], "filters": public_filters(config), "revision": revision(raw), "csrf": session[1]})
             except (OSError, ValueError, KeyError):
                 self.send_json(500, {"error": "读取设置失败"})
         else:
@@ -196,6 +225,33 @@ class Handler(BaseHTTPRequestHandler):
             with LOCK:
                 SESSIONS.pop(session[0], None)
             self.send_json(200, {"ok": True}, "sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
+        elif self.path in ("/api/xianyu/login", "/api/xianyu/cancel"):
+            service().request("login" if self.path.endswith("/login") else "cancel")
+            self.send_json(202, {"ok": True})
+        elif self.path == "/api/password":
+            try:
+                data = self.read_body()
+                old, new = data.get("current_password"), data.get("new_password")
+                if not isinstance(old, str) or not isinstance(new, str) or not 10 <= len(new) <= 128:
+                    raise ValueError("新密码请使用 10 至 128 个字符")
+                with LOCK:
+                    if not password_matches(old, PASSWORD_FILE.read_text()):
+                        raise ValueError("当前管理密码不正确")
+                    fd, temp = tempfile.mkstemp(prefix=".password-", dir=PASSWORD_FILE.parent)
+                    try:
+                        with os.fdopen(fd, "w") as out:
+                            os.fchmod(out.fileno(), 0o600)
+                            out.write(password_hash(new) + "\n")
+                            out.flush()
+                            os.fsync(out.fileno())
+                        os.replace(temp, PASSWORD_FILE)
+                    finally:
+                        if os.path.exists(temp):
+                            os.unlink(temp)
+                    SESSIONS.clear()
+                self.send_json(200, {"ok": True}, "sid=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
+            except (ValueError, OSError) as exc:
+                self.send_json(400, {"error": str(exc) if isinstance(exc, ValueError) else "密码保存失败，请重试"})
         else:
             self.send_json(404, {"error": "接口不存在"})
 
@@ -213,6 +269,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send_json(409, {"error": "设置已被修改，请刷新后再编辑"})
                 config = json.loads(raw)
                 config["products"] = products
+                if "filters" in data:
+                    if not isinstance(data["filters"], dict):
+                        raise ValueError("过滤条件格式有误")
+                    for key in ("global_exclude_terms", "suspicious_terms"):
+                        config.setdefault("filters", {})[key] = terms(data["filters"].get(key, []))
                 encoded = (json.dumps(config, ensure_ascii=False, indent=2) + "\n").encode()
                 original = CONFIG.stat()
                 fd, temp = tempfile.mkstemp(prefix=".config-", dir=CONFIG.parent)
@@ -227,7 +288,7 @@ class Handler(BaseHTTPRequestHandler):
                 finally:
                     if os.path.exists(temp):
                         os.unlink(temp)
-            self.send_json(200, {"products": products, "revision": revision(encoded)})
+            self.send_json(200, {"products": products, "filters": public_filters(config), "revision": revision(encoded)})
         except (ValueError, OSError, json.JSONDecodeError) as exc:
             self.send_json(400, {"error": str(exc)})
 
