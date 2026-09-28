@@ -13,6 +13,7 @@ import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from search_terms import search_terms
 
 CONFIG = Path(os.environ.get("GOOFISH_CONFIG", "/app/private/config.local.json"))
 PASSWORD_FILE = Path(os.environ.get("GOOFISH_ADMIN_PASSWORD_FILE", "/app/private/admin_password.hash"))
@@ -76,8 +77,10 @@ def validate(products: object) -> list[dict]:
         name, keyword = item.get("name"), item.get("keyword")
         if not isinstance(name, str) or not 1 <= len(name.strip()) <= 80:
             raise ValueError(f"第 {index} 条：名称请填写 1 至 80 字")
-        if not isinstance(keyword, str) or not 1 <= len(keyword.strip()) <= 80:
-            raise ValueError(f"第 {index} 条：搜索关键词请填写 1 至 80 字")
+        try:
+            keywords = search_terms(keyword)
+        except ValueError as exc:
+            raise ValueError(f"第 {index} 条：{exc}") from None
         try:
             prices = [item[key] for key in ("min_price", "target_price", "max_results")]
             if any(isinstance(value, bool) or not isinstance(value, int) for value in prices):
@@ -91,7 +94,7 @@ def validate(products: object) -> list[dict]:
             raise ValueError(f"第 {index} 条：最多检查结果应在 1 至 100 之间")
         cleaned_item = dict(item)
         cleaned_item.update({
-            "name": name.strip(), "keyword": keyword.strip(),
+            "name": name.strip(), "keyword": "，".join(keywords),
             "min_price": low, "target_price": high, "max_results": count,
             "required_any_terms": terms(item.get("required_any_terms", [])),
             "exclude_terms": terms(item.get("exclude_terms", [])),

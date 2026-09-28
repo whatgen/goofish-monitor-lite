@@ -1,6 +1,6 @@
 # Reuse the previously deployed Playwright/Chromium layer for a fast NAS release.
 FROM docker.xuande.ltd:20000/goofish-monitor-lite:0.2.0-f0d31449-dual-links1@sha256:90ec3f00f475ddfcb622552b77fdea59f5d1ba66eca5137399aa88ccf40d0f65
 WORKDIR /app
-COPY goofish_monitor.py monitor_service.py admin_ui.py admin.html admin.js run_with_admin.py ./
+COPY search_terms.py goofish_monitor.py monitor_service.py admin_ui.py admin.html admin.js run_with_admin.py ./
 EXPOSE 9087
 CMD ["python", "run_with_admin.py"]

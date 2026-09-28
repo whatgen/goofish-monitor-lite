@@ -22,6 +22,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from search_terms import search_terms
 from typing import Any
 from urllib.parse import urlencode
 
@@ -475,9 +476,10 @@ class GoofishMonitor:
         log("Starting monitor round.")
         deals: list[Candidate] = []
         for product in self.products:
-            product_deals = await self.check_product(page, product)
-            deals.extend(product_deals)
-            await self.human_delay()
+            for keyword in search_terms(product.get("keyword") or product.get("name") or ""):
+                product_deals = await self.check_product(page, {**product, "keyword": keyword})
+                deals.extend(product_deals)
+                await self.human_delay()
         log(f"Round found {len(deals)} alert-worthy item(s).")
         return deals
 

@@ -19,7 +19,7 @@ function draw(){const root=$('#cards');root.replaceChildren();products.forEach((
   const card=document.createElement('section'),title=document.createElement('h2');
   card.className='card';title.textContent='搜索 '+(index+1);card.append(title);
   let row=document.createElement('div');row.className='row';
-  row.append(field('名称','name',p.name),field('闲鱼搜索词','keyword',p.keyword));card.append(row);
+  row.append(field('名称','name',p.name),field('闲鱼搜索词（多个用逗号或换行分隔）','keyword',p.keyword,'textarea'));card.append(row);
   row=document.createElement('div');row.className='row';
   row.append(field('最低价格（元）','min_price',p.min_price,'number'),field('最高价格（元）','target_price',p.target_price,'number'),field('最多检查结果','max_results',p.max_results??20,'number'));card.append(row);
   row=document.createElement('div');row.className='row';

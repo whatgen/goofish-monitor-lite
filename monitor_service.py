@@ -9,6 +9,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
+from search_terms import search_terms
 from urllib.parse import urlencode
 
 import requests
@@ -123,7 +124,7 @@ class MonitorService:
 
     async def verified_search(self, monitor, page):
         """Cookies alone are not evidence that the server accepts this login."""
-        keyword = monitor.products[0]["keyword"]
+        keyword = search_terms(monitor.products[0]["keyword"])[0]
         response = await monitor.goto_and_capture_search(page, GOOFISH_HOME + "search?" + urlencode({"q": keyword}))
         await monitor.assert_page_usable(page)
         if not response:
