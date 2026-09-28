@@ -140,9 +140,16 @@ class MonitorService:
             await page.goto(GOOFISH_HOME, wait_until="domcontentloaded", timeout=45000)
             await page.wait_for_timeout(2000)
             for label in ("登录", "登录/注册", "亲，请登录", "立即登录"):
+                if await self.login_visible(page):
+                    break
                 button = page.get_by_text(label, exact=True).first
                 if await button.is_visible():
-                    await button.click(timeout=5000)
+                    try:
+                        await button.click(timeout=5000)
+                    except Exception:
+                        # The site's automatic modal can appear over the button mid-click.
+                        if not await self.login_visible(page):
+                            raise
                     break
             if not await self.login_visible(page):
                 # Search also triggers the site's own login dialog when necessary.
