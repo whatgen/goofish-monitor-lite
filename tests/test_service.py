@@ -54,3 +54,19 @@ class SearchVerificationTest(unittest.IsolatedAsyncioTestCase):
             self.assertFalse(await service.verified_search(monitor, Mock()))
             response.json = AsyncMock(return_value={'ret': ['SUCCESS::调用成功'], 'data': {'resultList': []}})
             self.assertTrue(await service.verified_search(monitor, Mock()))
+
+    async def test_already_open_modal_does_not_click_obscured_login_button(self):
+        from unittest.mock import AsyncMock, Mock
+        with tempfile.TemporaryDirectory() as root:
+            service = MonitorService(Path(root) / 'config.json')
+            service.login_visible = AsyncMock(return_value=True)
+            service.login_image = AsyncMock(return_value=b'official-qr')
+            page = Mock(frames=[])
+            page.goto = AsyncMock()
+            page.wait_for_timeout = AsyncMock()
+            with patch('monitor_service.asyncio.sleep', side_effect=asyncio.CancelledError):
+                with self.assertRaises(asyncio.CancelledError):
+                    await service.login_flow(Mock(), Mock(), page)
+            page.get_by_text.assert_not_called()
+            service.login_image.assert_awaited_once()
+            self.assertIsNone(service.image)
